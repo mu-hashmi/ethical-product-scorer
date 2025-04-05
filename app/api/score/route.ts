@@ -11,8 +11,13 @@ interface AIScoreResponse {
   laborScore: number;
   climateScore: number;
   humanRightsScore: number;
-  explanation: string;
-  alternatives: string[];
+  laborExplanation: string;
+  climateExplanation: string;
+  humanRightsExplanation: string;
+  alternatives: Array<{
+    name: string;
+    reason: string;
+  }>;
 }
 
 export async function POST(request: Request) {
@@ -56,14 +61,46 @@ You are an ethical product evaluator. Your task is to assess the ethical standin
 
 For each category, provide a score from 0 (very unethical) to 10 (very ethical).
 
-Respond ONLY with a valid JSON object containing the following keys:
+CRITICAL: 
+- Explanations MUST be exactly ONE short sentence that captures the most important factor affecting the score. Be extremely concise.
+- ALWAYS suggest exactly 3 other ethical options in this market/category, regardless of the product's score.
+- For each option, explain its unique ethical strength in one concise sentence.
+- Even if the evaluated product scores well, provide other ethical choices for consumers to consider.
+
+Respond ONLY with a valid JSON object containing EXACTLY the following keys:
 - "laborScore" (number from 0-10)
 - "climateScore" (number from 0-10)
 - "humanRightsScore" (number from 0-10)
-- "explanation" (string with a brief explanation of the scores)
-- "alternatives" (array of strings with up to 3 more ethical alternative products or companies)
+- "laborExplanation" (ONE sentence about key labor factor)
+- "climateExplanation" (ONE sentence about key environmental factor)
+- "humanRightsExplanation" (ONE sentence about key human rights factor)
+- "alternatives" (array of exactly 3 objects, each containing "name" and "reason" fields)
 
-Do not include any text before or after the JSON object.
+Example format:
+{
+  "laborScore": 7,
+  "climateScore": 8,
+  "humanRightsScore": 6,
+  "laborExplanation": "Good working conditions but supplier oversight needs improvement.",
+  "climateExplanation": "Strong renewable energy commitment with recyclable packaging.",
+  "humanRightsExplanation": "No direct violations but supply chain monitoring is weak.",
+  "alternatives": [
+    {
+      "name": "Better Brand A",
+      "reason": "Industry leader in fair labor practices with fully transparent supply chain."
+    },
+    {
+      "name": "Eco Company B",
+      "reason": "Uses 100% renewable energy and biodegradable packaging."
+    },
+    {
+      "name": "Ethical Corp C",
+      "reason": "Certified B-Corporation with strong human rights track record."
+    }
+  ]
+}
+
+Do not include any text before or after the JSON object. ONLY RETURN THE JSON OBJECT.
 `;
 
   const userPrompt = `Evaluate the following product/company: "${productName}"`;
@@ -72,7 +109,7 @@ Do not include any text before or after the JSON object.
     console.log(`Sending request to Gemini for: ${productName}`);
     
     const response = await genAI.models.generateContent({
-      model: "gemini-pro",
+      model: "gemini-2.0-flash",
       contents: systemPrompt + "\n\n" + userPrompt,
     });
     
@@ -82,18 +119,29 @@ Do not include any text before or after the JSON object.
       throw new Error("No content received from AI model.");
     }
 
+    // Clean the content by removing Markdown code block syntax
+    const cleanContent = content.replace(/^```json\n|\n```$/g, '').trim();
+
     // Parse the JSON response
     let aiResult: AIScoreResponse;
     try {
-      aiResult = JSON.parse(content);
+      aiResult = JSON.parse(cleanContent);
 
       // Basic validation
       if (
         typeof aiResult.laborScore !== "number" ||
         typeof aiResult.climateScore !== "number" ||
         typeof aiResult.humanRightsScore !== "number" ||
-        typeof aiResult.explanation !== "string" ||
-        !Array.isArray(aiResult.alternatives)
+        typeof aiResult.laborExplanation !== "string" ||
+        typeof aiResult.climateExplanation !== "string" ||
+        typeof aiResult.humanRightsExplanation !== "string" ||
+        !Array.isArray(aiResult.alternatives) ||
+        !aiResult.alternatives.every(alt => 
+          typeof alt === "object" && 
+          alt !== null && 
+          typeof alt.name === "string" && 
+          typeof alt.reason === "string"
+        )
       ) {
         throw new Error("Invalid JSON structure received from AI.");
       }
@@ -102,10 +150,6 @@ Do not include any text before or after the JSON object.
       aiResult.laborScore = Math.min(10, Math.max(0, aiResult.laborScore));
       aiResult.climateScore = Math.min(10, Math.max(0, aiResult.climateScore));
       aiResult.humanRightsScore = Math.min(10, Math.max(0, aiResult.humanRightsScore));
-      
-      aiResult.alternatives = aiResult.alternatives.filter(
-        (alt): alt is string => typeof alt === "string",
-      );
 
     } catch (parseError) {
       console.error("Failed to parse JSON response from AI:", parseError);
@@ -118,7 +162,9 @@ Do not include any text before or after the JSON object.
       laborScore: aiResult.laborScore,
       climateScore: aiResult.climateScore,
       humanRightsScore: aiResult.humanRightsScore,
-      explanation: aiResult.explanation,
+      laborExplanation: aiResult.laborExplanation,
+      climateExplanation: aiResult.climateExplanation,
+      humanRightsExplanation: aiResult.humanRightsExplanation,
       alternatives: aiResult.alternatives,
     };
 
