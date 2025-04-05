@@ -1,103 +1,207 @@
-import Image from "next/image";
+// app/page.tsx
+"use client"; // Required for using React hooks like useState
+
+import { FormEvent, useState } from "react";
+
+// Define a type for the score results (you can expand this later)
+type ScoreResult = {
+  productName: string;
+  score: number | null;
+  explanation: string;
+  alternatives: string[];
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [productInput, setProductInput] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [result, setResult] = useState<ScoreResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // --- Backend Interaction Placeholder ---
+  // This function will eventually call your backend API
+  const fetchEthicalScore = async (
+    productName: string,
+  ): Promise<ScoreResult> => {
+    console.log(`Fetching score for: ${productName}`);
+    setIsLoading(true);
+    setError(null);
+    setResult(null); // Clear previous results
+
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    try {
+      // TODO: Replace this with an actual API call to your backend
+      // Example:
+      // const response = await fetch('/api/score', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ productName }),
+      // });
+      // if (!response.ok) {
+      //   throw new Error('Failed to fetch score');
+      // }
+      // const data: ScoreResult = await response.json();
+      // return data;
+
+      // --- Placeholder Data ---
+      // Remove this section when you implement the actual API call
+      if (productName.toLowerCase().includes("error")) {
+        throw new Error("Simulated API error.");
+      }
+      const mockScore = Math.floor(Math.random() * 101); // Random score 0-100
+      const mockResult: ScoreResult = {
+        productName: productName,
+        score: mockScore,
+        explanation: `This is a placeholder explanation for ${productName}. The score of ${mockScore} is based on simulated factors.`,
+        alternatives:
+          mockScore < 70
+            ? [
+                "Ethical Alternative A",
+                "Sustainable Choice B",
+                "Fair Trade Option C",
+              ]
+            : [],
+      };
+      // --- End Placeholder Data ---
+
+      return mockResult; // Return placeholder data for now
+    } catch (err) {
+      console.error("Error fetching score:", err);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred.",
+      );
+      // In case of error, return a default/error state object
+      return {
+        productName: productName,
+        score: null,
+        explanation: "Could not retrieve score.",
+        alternatives: [],
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  // --- End Backend Interaction Placeholder ---
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); // Prevent default form submission page reload
+    if (!productInput.trim()) {
+      setError("Please enter a product or company name.");
+      return;
+    }
+    const scoreData = await fetchEthicalScore(productInput);
+    setResult(scoreData);
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col items-center p-8 sm:p-16 bg-gray-900">
+      <div className="w-full max-w-2xl bg-gray-800 p-8 rounded-lg shadow-md">
+        <h1 className="text-3xl font-bold mb-6 text-center text-white">
+          Ethical Product Scorer
+        </h1>
+
+        <form onSubmit={handleSubmit} className="mb-6">
+          <label
+            htmlFor="productInput"
+            className="block text-sm font-medium text-gray-300 mb-2"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            Enter Product or Company Name:
+          </label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              id="productInput"
+              type="text"
+              value={productInput}
+              onChange={(e) => setProductInput(e.target.value)}
+              placeholder="e.g., 'Brand X Chocolate Bar' or 'Company Y'"
+              className="flex-grow px-4 py-2 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-700 text-white placeholder-gray-400"
+              disabled={isLoading}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            <button
+              type="submit"
+              className={`px-6 py-2 rounded-md text-white font-semibold transition-colors duration-200 ease-in-out ${
+                isLoading
+                  ? "bg-gray-600 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              disabled={isLoading}
+            >
+              {isLoading ? "Checking..." : "Get Score"}
+            </button>
+          </div>
+        </form>
+
+        {/* --- Results Display Area --- */}
+        {isLoading && (
+          <div className="text-center text-gray-300">
+            <p>Loading score...</p>
+            {/* Optional: Add a spinner SVG or component here */}
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 p-4 bg-red-900 border border-red-700 text-red-200 rounded-md">
+            <p>
+              <strong>Error:</strong> {error}
+            </p>
+          </div>
+        )}
+
+        {result && !isLoading && (
+          <div className="mt-6 p-6 border border-gray-700 rounded-lg bg-gray-700">
+            <h2 className="text-2xl font-semibold mb-4 text-white">
+              Results for:{" "}
+              <span className="font-bold">{result.productName}</span>
+            </h2>
+
+            {/* Placeholder for Score */}
+            {result.score !== null ? (
+              <div className="mb-4">
+                <p className="text-lg text-gray-200">
+                  <strong>Overall Ethics Score:</strong>
+                  <span className="text-xl font-bold ml-2 text-blue-400">
+                    {result.score} / 100
+                  </span>
+                </p>
+                {/* TODO: Add detailed scores for climate, labor, etc. later */}
+              </div>
+            ) : (
+              <p className="text-lg text-gray-400">Score not available.</p>
+            )}
+
+            {/* Placeholder for Explanation */}
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-1 text-gray-200">
+                Explanation:
+              </h3>
+              <p className="text-gray-300">{result.explanation}</p>
+              {/* TODO: Populate this with details from the OpenAI API response */}
+            </div>
+
+            {/* Placeholder for Alternatives */}
+            {result.alternatives.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-1 text-gray-200">
+                  Suggested Alternatives:
+                </h3>
+                <ul className="list-disc list-inside text-gray-300">
+                  {result.alternatives.map((alt, index) => (
+                    <li key={index}>{alt}</li>
+                  ))}
+                </ul>
+                {/* TODO: Fetch and display actual alternatives */}
+              </div>
+            )}
+            {result.alternatives.length === 0 && result.score !== null && (
+              <p className="text-gray-400">
+                No specific alternatives suggested based on this score.
+              </p>
+            )}
+          </div>
+        )}
+        {/* --- End Results Display Area --- */}
+      </div>
+    </main>
   );
 }
